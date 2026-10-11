@@ -46,3 +46,14 @@ class Validator:
 
         return True, ""
 
+
+    @staticmethod
+    def is_valid_transfer_amount(amount):
+        if amount < 1:
+            return False, "Amount must be at least ₹ 1."
+
+        if amount > 20000:
+            return False, "Amount cannot exceed ₹ 20,000."
+
+        return True, ""
+

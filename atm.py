@@ -8,6 +8,8 @@ import sys
 
 
 class ATM:
+
+    # 1. Constructor / Start
     def __init__(self):
         self.__users = {}
         self.__current_user = None
@@ -19,7 +21,7 @@ class ATM:
         self.main_menu()
 
 
-    # ---------------ATM MENU----------------#
+    # 2. Main Menus
     def main_menu(self):
         atm_name = "SBI"
         while True:
@@ -111,6 +113,113 @@ class ATM:
                 print("Please enter a valid input.")
 
 
+    def atm_menu(self):
+        while True:
+            start_time = time.time()
+            print(f"""
+                        ==========Welcome {self.__current_user.user_id}==========
+                        1. Check Balance 
+                        2. Withdraw Money
+                        3. Deposit Money
+                        4. Transfer Money
+                        5. Change PIN
+                        6. Transaction History 
+                        0.Logout
+                        =====================================
+            """)
+
+            try:
+                user_input = int(input("Enter your choice: "))
+                if user_input == 1:
+                    if self.check_session(start_time):
+                        break
+                    self.check_balance()
+
+                elif user_input == 2:
+                    if self.check_session(start_time):
+                        break
+                    self.withdraw_money()
+
+                elif user_input == 3:
+                    if self.check_session(start_time):
+                        break
+                    self.deposit_money()
+
+                elif user_input == 4:
+                    if self.check_session(start_time):
+                        break
+                    self.transfer_money()
+
+                elif user_input == 5:
+                    if self.check_session(start_time):
+                        break
+                    self.change_pin()
+
+                elif user_input == 6:
+                    if self.check_session(start_time):
+                        break
+                    self.show_transaction_history()
+
+                elif user_input == 0:
+                    self.logout()
+                    break
+
+                else:
+                    print("\nPlease enter a valid input.")
+
+            except ValueError:
+                print("\nPlease enter a valid input.")
+
+
+    # 3. User Creation & Authentication
+    def create_user(self):
+        while True:
+
+            user_id = input("\nCreate User ID(0 to cancel): ").strip().lower()
+            if user_id == "0":
+                return
+
+            valid, message = Validator.is_valid_user_id(user_id)
+
+            if not valid:
+                print(message)
+                continue
+
+            if user_id in self.__users:
+                print("\nUser ID already exists.")
+                continue
+
+            self.create_pin(user_id)
+            print("\nAccount Created Successfully.")
+            print(f"User ID: {user_id}")
+            return
+
+
+    def create_pin(self, user_id):
+        while True:
+            pin = self.get_new_pin()
+
+            user = User(user_id, pin, 0)
+            self.__users[user_id] = user
+            self.save_data()
+            return
+
+
+    @staticmethod
+    def get_new_pin():
+        while True:
+            new_pin = input("\nCreate 4-digit PIN: ")
+            confirm_pin = input("Confirm 4-digit PIN: ")
+
+            valid, message = Validator.is_valid_pin(new_pin, confirm_pin)
+
+            if not valid:
+                print(message)
+                continue
+
+            return new_pin
+
+
     def user_login(self):
         user_id = input("\nEnter User ID:").strip().lower()
 
@@ -138,119 +247,6 @@ class ATM:
         return False
 
 
-    # --------------CREATE USER-----------------#
-    def create_user(self):
-        while True:
-
-            user_id = input("\nCreate User ID(0 to cancel): ").strip().lower()
-            if user_id == "0":
-                return
-
-            valid, message = Validator.is_valid_user_id(user_id)
-
-            if not valid:
-                print(message)
-                continue
-
-            if user_id in self.__users:
-                print("\nUser ID already exists.")
-                continue
-
-            self.create_pin(user_id)
-            print("\nAccount Created Successfully.")
-            print(f"User ID: {user_id}")
-            return
-
-    def create_pin(self, user_id):
-        while True:
-            pin = self.get_new_pin()
-
-            user = User(user_id, pin, 0)
-            self.__users[user_id] = user
-            self.save_data()
-            return
-
-
-    @staticmethod
-    def get_new_pin():
-        while True:
-            new_pin = input("\nCreate 4-digit PIN: ")
-            confirm_pin = input("Confirm 4-digit PIN: ")
-
-            valid, message = Validator.is_valid_pin(new_pin, confirm_pin)
-
-            if not valid:
-                print(message)
-                continue
-
-            return new_pin
-
-
-    # ---------------ATM MENU----------------#
-    def atm_menu(self):
-        while True:
-            start_time = time.time()
-            print(f"""
-                        ==========Welcome {self.__current_user.user_id}==========
-                        1. Check Balance 
-                        2. Withdraw Money
-                        3. Deposit Money
-                        4. Change PIN
-                        5. Transaction History 
-                        6. Logout
-                        =====================================
-            """)
-
-            try:
-                user_input = int(input("Enter your choice: "))
-                if user_input == 1:
-                    if self.check_session(start_time):
-                        break
-                    self.check_balance()
-
-                elif user_input == 2:
-                    if self.check_session(start_time):
-                        break
-                    self.withdraw_money()
-
-                elif user_input == 3:
-                    if self.check_session(start_time):
-                        break
-                    self.deposit_money()
-
-                elif user_input == 4:
-                    if self.check_session(start_time):
-                        break
-                    self.change_pin()
-
-                elif user_input == 5:
-                    if self.check_session(start_time):
-                        break
-                    self.show_history()
-
-                elif user_input == 6:
-                    self.logout()
-                    break
-
-                else:
-                    print("\nPlease enter a valid input.")
-
-            except ValueError:
-                print("\nPlease enter a valid input.")
-
-
-    # ----------------Check Session-----------------#
-    def check_session(self, start_time):
-        if (time.time() - start_time) > 60:
-            self.__current_user = None
-            print("\nSession Expired."
-                  "\nPlease try again.")
-            return True
-
-        else:
-            return False
-
-    #__________________CHECK PIN___________________#
     def check_pin(self):
         user = self.__current_user
 
@@ -268,8 +264,29 @@ class ATM:
 
         return False
 
+
+    # 4. Session Management
+    def check_session(self, start_time):
+        if (time.time() - start_time) > 60:
+            self.__current_user = None
+            print("\nSession Expired."
+                  "\nPlease try again.")
+            return True
+
+        else:
+            return False
+
+
+    def logout(self):
+        self.__current_user = None
+        print("\nLogout Successfully.")
+        print("Thank you for using ATM.")
+
+
+    # 5. Account Operations
     def check_balance(self):
         print(f"\nCurrent Balance: ₹ {self.__current_user.balance}")
+
 
     def deposit_money(self):
         user = self.__current_user
@@ -292,8 +309,8 @@ class ATM:
                     continue
 
                 user.balance += amount
-                deposit_transaction = Transaction("Deposit", amount)
-                user.history.append(deposit_transaction.to_dict())
+                transaction = Transaction("Deposit", amount)
+                user.history.append(transaction.to_dict())
                 self.save_data()
 
                 print("\nAmount Deposited Successfully.")
@@ -336,8 +353,8 @@ class ATM:
 
                 user.balance -= amount
 
-                withdraw_transaction = Transaction("Withdraw", amount)
-                user.history.append(withdraw_transaction.to_dict())
+                transaction = Transaction("Withdraw", amount)
+                user.history.append(transaction.to_dict())
 
                 self.save_data()
                 print("\nWithdraw Successfully.")
@@ -348,7 +365,63 @@ class ATM:
                 print("\nPlease enter a valid amount.")
 
 
-    # _____________CHANGE PIN_______________#
+    def transfer_money(self):
+        while True:
+            receiver_id = input("\nEnter Receiver User ID(0 to cancel): ").strip().lower()
+
+            if receiver_id == "0":
+                print("\nTransfer Cancelled.")
+                return
+
+            if receiver_id not in self.__users:
+                print("\nUser Not Found.")
+                continue
+
+            if receiver_id == self.__current_user.user_id:
+                print("You cannot transfer money to yourself.")
+                continue
+
+            sender = self.__current_user
+            receiver = self.__users[receiver_id]
+
+            try:
+                amount = int(input("\nEnter Transfer Amount(0 to cancel): "))
+
+                if amount == 0:
+                    print("\nTransfer Cancelled.")
+                    return
+
+                valid, message = Validator.is_valid_transfer_amount(amount)
+                if not valid:
+                    print(message)
+                    continue
+
+                if amount > sender.balance:
+                    print("\nInsufficient Balance.")
+                    continue
+
+                sender.balance -= amount
+                receiver.balance += amount
+
+                sender_transaction = Transaction("Transfer", amount)
+                data = sender_transaction.to_dict()
+                data["To"] = receiver_id
+                sender.history.append(data)
+
+                receiver_transaction = Transaction("Receive", amount)
+                data = receiver_transaction.to_dict()
+                data["From"] = sender.user_id
+                receiver.history.append(data)
+
+                self.save_data()
+
+                print("Money Transfered Successfully.")
+                return
+
+            except ValueError:
+                print("\nPlease enter a valid amount.")
+
+
     def change_pin(self):
         user = self.__current_user
         if self.check_pin():
@@ -362,37 +435,30 @@ class ATM:
 
                 user.pin = new_pin
 
-                change_pin_transaction = Transaction("Change Pin")
-                user.history.append(change_pin_transaction.to_dict())
+                transaction = Transaction("Change Pin")
+                user.history.append(transaction.to_dict())
 
                 self.save_data()
                 print("\nPIN Changed Successfully.")
                 return
 
 
-    #---------------SHOW HISTORY-----------------#
-    def show_history(self):
+    # 6. Transaction History
+    def show_transaction_history(self):
         user = self.__current_user
 
         if not user.history:
             print("\nNo Transactions Found.")
             return
 
+        for transaction in user.history:
 
-        print("\n=============Transaction History================\n")
-        for user_transaction in user.history:
-
-            for key, value in user_transaction.items():
+            for key, value in transaction.items():
                 print(f"{key}: {value}")
             print("------------------------")
 
 
-    def logout(self):
-        self.__current_user = None
-        print("\nLogout Successfully.")
-        print("Thank you for using ATM.")
-
-
+    # 7. Data Storage
     def save_data(self):
         self.__storage.save(self.__users)
 
@@ -405,9 +471,4 @@ class ATM:
                 user_id,
                 user_data
             )
-
-
-    def reload_data(self):
-        self.__users.clear()
-        self.load_data()
 

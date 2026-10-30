@@ -35,3 +35,4 @@ class User:
     @balance.setter
     def balance(self, amount):
         self.__balance = amount
+

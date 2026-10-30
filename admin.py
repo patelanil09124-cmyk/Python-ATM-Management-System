@@ -1,9 +1,9 @@
 from validator import Validator
-import shutil
 
 class Admin:
-    def __init__(self, users):
-        self.users = users
+    def __init__(self, users, storage):
+        self.__users = users
+        self.__storage = storage
         self.__admin_id = "admin123"
         self.__password = "Admin123@"
 
@@ -80,39 +80,41 @@ class Admin:
 
 
     def show_all_users(self):
-        if not self.users:
+        if not self.__users:
             print("\nNo Users Found.")
             return
 
-        print("\n==============All Users=============")
+        print("\n==============All Resistered Users=============")
 
-        for user_id, user in self.users.items():
+        for user in self.__users.values():
+            transaction_count = self.__storage.get_transaction_count(user.user_id)
             print(f"""
-            User ID: {user_id}
+            User ID: {user.user_id}
             Balance: ₹{user.balance}
-            ------------------------------
-            """)
+            Total Transactions: {transaction_count}
+            ------------------------------""")
 
 
     def delete_user(self):
         user_id = input("\nEnter User ID to delete: ").strip().lower()
 
-        if user_id not in self.users:
+        if user_id not in self.__users:
             print("\nUser Not Found.")
             return
 
-        user = self.users[user_id]
+        user = self.__users[user_id]
 
         print(f"""
-        User Found:
-        
+        --------User Found-------
         User ID: {user.user_id}
         Balance: {user.balance}
+        -------------------------
         """)
 
         confirm = input("Are you sure you want to delete? (y/n): ").lower()
         if confirm == "y":
-            del self.users[user_id]
+            del self.__users[user_id]
+            self.__storage.delete_user(user_id)
             print("\nUser Deleted Seccessfully.")
 
         else:
@@ -121,10 +123,11 @@ class Admin:
     def reset_user_pin(self):
         user_id = input("\nEnter User ID: ").strip().lower()
 
-        if user_id not in self.users:
+        if user_id not in self.__users:
             print("\nUser Not Found.")
+            return
 
-        user = self.users[user_id]
+        user = self.__users[user_id]
         print(f"\nUser Found: {user.user_id}")
 
         new_pin = input("Enter New PIN: ")
@@ -139,7 +142,10 @@ class Admin:
             print("\nNew PIN cannot be same as old PIN.")
             return
 
-        user.pin = new_pin
+        self.__storage.update_pin(
+            user.user_id,
+            new_pin
+        )
 
         print("\nPIN Reset Successfully.")
 
@@ -147,11 +153,13 @@ class Admin:
     def search_user(self):
         user_id = input("\nEnter User ID to search: ").strip().lower()
 
-        if user_id not in self.users:
+        if user_id not in self.__users:
             print("\nUser Not Found.")
             return
 
-        user = self.users[user_id]
+        user = self.__users[user_id]
+
+        transaction_count = self.__storage.get_transaction_count(user.user_id)
 
         print("""\n
         ==================User Details=====================
@@ -159,43 +167,46 @@ class Admin:
 
         print(f"User ID: {user.user_id}")
         print(f"Balance: ₹ {user.balance}")
-        print(f"Total Transactions: {len(user.history)}")
+        print(f"Total Transactions: {transaction_count}")
 
-    def total_balance(self):
-        total_amount = 0
-        for user in self.users.values():
-            total_amount += user.balance
 
-        print(f"\nTotal ATM Balance: ₹{total_amount}")
+    def show_system_statistics(self):
+        total_users, total_balance, total_transactions = (
+            self.__storage.get_system_statistics()
+        )
 
-    def total_users(self):
-        total = len(self.users)
-        print(f"\nTotal Users: {total}")
+        print("\n=======ATM STSTEM STATISTICS=======")
+        print(f"Total Users: {total_users}")
+        print(f"Total Balance: {total_balance}")
+        print(f"Total Transactions: {total_transactions}")
+        print("=====================================")
 
-    @staticmethod
-    def backup_database():
-        try:
 
-            shutil.copy(
-                "atm_data.json",
-                "backup_database.json"
+    def backup_database(self):
+        self.__storage.backup_database()
+
+
+    def restore_database(self):
+        files = self.__storage.get_backup_files()
+
+        if not files:
+            print("\nNo Backup Files Found.")
+            return
+
+        print("\nAvailable Backups...\n")
+        for index, file in enumerate(files, start = 1):
+            print(f"{index}.{file}")
+
+        choice = int(input("\nSelect Backup: "))
+        if choice < 1 or choice > len(files):
+            print("\nInvalid Choice.")
+            return
+
+        confirmation = input("\nRestore Database? (Y/N): ").strip().upper()
+
+        if confirmation == "Y":
+            self.__storage.restore_database(
+                files[choice - 1]
             )
 
-            print("\nDatabase Backup Created Successfully.")
 
-        except FileNotFoundError:
-            print("\nDatabase file nor found.")
-
-    @staticmethod
-    def restore_database():
-        try:
-
-            shutil.copy(
-                "atm_backup.json",
-                "atm_data.json"
-            )
-
-            print("\nDatabase Restored Successfully.")
-
-        except FileNotFoundError:
-            print("\nBackup file not found.")

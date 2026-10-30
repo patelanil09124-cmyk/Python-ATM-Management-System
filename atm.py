@@ -1,6 +1,5 @@
 from user import User
 from storage import Storage
-from transaction import Transaction
 from admin import Admin
 from validator import Validator
 import time
@@ -15,7 +14,7 @@ class ATM:
         self.__current_user = None
         self.__storage = Storage()
         self.load_data()
-        self.admin = Admin(self.__users)
+        self.admin = Admin(self.__users, self.__storage)
 
     def start(self):
         self.main_menu()
@@ -58,14 +57,13 @@ class ATM:
             print("""
             =================Admin Menu==================
             1. Show All Users
-            2. Total Users
-            3. Total Balance
-            4. Search User
-            5. Delete User
-            6. Reset User PIN
-            7. Backup Database
-            8. Restore Database
-            9. System Shutdown
+            2. Show System Statistics
+            3. Search User
+            4. Delete User
+            5. Reset User PIN
+            6. Backup Database
+            7. Restore Database
+            8. System Shutdown
             0. Logout
             =============================================
             """)
@@ -77,28 +75,25 @@ class ATM:
                     self.admin.show_all_users()
 
                 elif choice == 2:
-                    self.admin.total_users()
+                    self.admin.show_system_statistics()
 
                 elif choice == 3:
-                    self.admin.total_balance()
-
-                elif choice == 4:
                     self.admin.search_user()
 
-                elif choice == 5:
+                elif choice == 4:
                     self.admin.delete_user()
                     self.save_data()
 
-                elif choice == 6:
+                elif choice == 5:
                     self.admin.reset_user_pin()
 
-                elif choice == 7:
+                elif choice == 6:
                     self.admin.backup_database()
 
-                elif choice == 8:
+                elif choice == 7:
                     self.admin.restore_database()
 
-                elif choice == 9:
+                elif choice == 8:
                     if self.admin.system_shutdown():
                         sys.exit()
 
@@ -129,38 +124,39 @@ class ATM:
             """)
 
             try:
-                user_input = int(input("Enter your choice: "))
-                if user_input == 1:
+                choice = int(input("Enter your choice: "))
+
+                if choice == 1:
                     if self.check_session(start_time):
                         break
                     self.check_balance()
 
-                elif user_input == 2:
+                elif choice == 2:
                     if self.check_session(start_time):
                         break
                     self.withdraw_money()
 
-                elif user_input == 3:
+                elif choice == 3:
                     if self.check_session(start_time):
                         break
                     self.deposit_money()
 
-                elif user_input == 4:
+                elif choice == 4:
                     if self.check_session(start_time):
                         break
                     self.transfer_money()
 
-                elif user_input == 5:
+                elif choice == 5:
                     if self.check_session(start_time):
                         break
                     self.change_pin()
 
-                elif user_input == 6:
+                elif choice == 6:
                     if self.check_session(start_time):
                         break
                     self.show_transaction_history()
 
-                elif user_input == 0:
+                elif choice == 0:
                     self.logout()
                     break
 
@@ -267,7 +263,7 @@ class ATM:
 
     # 4. Session Management
     def check_session(self, start_time):
-        if (time.time() - start_time) > 60:
+        if (time.time() - start_time) > 45:
             self.__current_user = None
             print("\nSession Expired."
                   "\nPlease try again.")
@@ -309,8 +305,8 @@ class ATM:
                     continue
 
                 user.balance += amount
-                transaction = Transaction("Deposit", amount)
-                user.history.append(transaction.to_dict())
+
+                self.__storage.save_transaction(user.user_id, "Deposit", amount)
                 self.save_data()
 
                 print("\nAmount Deposited Successfully.")
@@ -353,8 +349,7 @@ class ATM:
 
                 user.balance -= amount
 
-                transaction = Transaction("Withdraw", amount)
-                user.history.append(transaction.to_dict())
+                self.__storage.save_transaction(user.user_id, "Withdraw", amount)
 
                 self.save_data()
                 print("\nWithdraw Successfully.")
@@ -403,15 +398,21 @@ class ATM:
                 sender.balance -= amount
                 receiver.balance += amount
 
-                sender_transaction = Transaction("Transfer", amount)
-                data = sender_transaction.to_dict()
-                data["To"] = receiver_id
-                sender.history.append(data)
+                self.__storage.save_transaction(
+                    user_id = sender.user_id,
+                    transaction_type = "Transfer",
+                    amount = amount,
+                    receiver_id = receiver.user_id,
+                    sender_id = sender.user_id
+                )
 
-                receiver_transaction = Transaction("Receive", amount)
-                data = receiver_transaction.to_dict()
-                data["From"] = sender.user_id
-                receiver.history.append(data)
+                self.__storage.save_transaction(
+                    user_id = receiver.user_id,
+                    transaction_type = "Receive",
+                    amount = amount,
+                    receiver_id = receiver.user_id,
+                    sender_id = sender.user_id
+                )
 
                 self.save_data()
 
@@ -435,8 +436,10 @@ class ATM:
 
                 user.pin = new_pin
 
-                transaction = Transaction("Change Pin")
-                user.history.append(transaction.to_dict())
+                self.__storage.save_transaction(
+                    user_id = user.user_id,
+                    transaction_type = "Change PIN"
+                )
 
                 self.save_data()
                 print("\nPIN Changed Successfully.")
@@ -445,17 +448,21 @@ class ATM:
 
     # 6. Transaction History
     def show_transaction_history(self):
-        user = self.__current_user
+        transactions = self.__storage.get_transactions(
+            self.__current_user.user_id
+        )
 
-        if not user.history:
+        if not transactions:
             print("\nNo Transactions Found.")
             return
 
-        for transaction in user.history:
-
-            for key, value in transaction.items():
-                print(f"{key}: {value}")
-            print("------------------------")
+        for transaction in transactions:
+            print("--------------------------")
+            print(f"Type: {transaction[0]}")
+            print(f"Amount: {transaction[1]}")
+            print(f"From: {transaction[2]}")
+            print(f"To: {transaction[3]}")
+            print(f"Date: {transaction[4]}")
 
 
     # 7. Data Storage
@@ -464,11 +471,6 @@ class ATM:
 
 
     def load_data(self):
-        data = self.__storage.load()
+        self.__users = self.__storage.load()
 
-        for user_id, user_data in data.items():
-            self.__users[user_id] = User.from_dict(
-                user_id,
-                user_data
-            )
 
